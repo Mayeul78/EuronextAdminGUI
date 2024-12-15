@@ -1,0 +1,5 @@
+/Users/mayeulboucher/Desktop/Euronext_Project/GUI/cmake-build-debug/CMakeFiles/APIManager.dir
+/Users/mayeulboucher/Desktop/Euronext_Project/GUI/cmake-build-debug/CMakeFiles/GUI.dir
+/Users/mayeulboucher/Desktop/Euronext_Project/GUI/cmake-build-debug/CMakeFiles/TestExecutable.dir
+/Users/mayeulboucher/Desktop/Euronext_Project/GUI/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/mayeulboucher/Desktop/Euronext_Project/GUI/cmake-build-debug/CMakeFiles/rebuild_cache.dir
