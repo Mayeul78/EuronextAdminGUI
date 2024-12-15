@@ -3,9 +3,13 @@
 // Enum for button IDs
 enum {
     ID_REFRESH_BUTTON = wxID_HIGHEST + 1,
-    ID_ADD_MODIFY_BUTTON
+    ID_ADD_BUTTON,
+    ID_MODIFY_BUTTON,
+    ID_DELETE_BUTTON,
+    ID_DEACTIVATE_BUTTON
 };
 
+// Constructor
 InstrumentListFrame::InstrumentListFrame(APIManager& apiManager)
         : wxFrame(nullptr, wxID_ANY, "Instruments", wxDefaultPosition, wxSize(800, 700)),
           apiManager(apiManager) {
@@ -28,7 +32,11 @@ InstrumentListFrame::InstrumentListFrame(APIManager& apiManager)
     instrumentGrid->SetColSize(2, 100);
     instrumentGrid->SetColSize(3, 100);
     mainSizer->Add(instrumentGrid, 1, wxALL | wxEXPAND, 10);
-// Form Layout: One row per field
+
+    // Bind grid row selection event
+    instrumentGrid->Bind(wxEVT_GRID_SELECT_CELL, &InstrumentListFrame::OnGridCellSelected, this);
+
+    // Form Layout
     wxBoxSizer* formSizer = new wxBoxSizer(wxVERTICAL);
 
     // ISIN Row
@@ -61,21 +69,34 @@ InstrumentListFrame::InstrumentListFrame(APIManager& apiManager)
 
     mainSizer->Add(formSizer, 0, wxALL | wxEXPAND, 10);
 
-    // Add/Modify Button
-    wxButton* addModifyButton = new wxButton(panel, ID_ADD_MODIFY_BUTTON, "Add/Modify");
-    mainSizer->Add(addModifyButton, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 10);
+    // Add Buttons for Add, Modify, Delete, and Deactivate
+    wxBoxSizer* buttonSizer = new wxBoxSizer(wxHORIZONTAL);
 
+    wxButton* addButton = new wxButton(panel, ID_ADD_BUTTON, "Add");
+    wxButton* modifyButton = new wxButton(panel, ID_MODIFY_BUTTON, "Modify");
+    wxButton* deleteButton = new wxButton(panel, ID_DELETE_BUTTON, "Delete");
+    wxButton* deactivateButton = new wxButton(panel, ID_DEACTIVATE_BUTTON, "Deactivate");
+
+    buttonSizer->Add(addButton, 1, wxALL | wxEXPAND, 5);
+    buttonSizer->Add(modifyButton, 1, wxALL | wxEXPAND, 5);
+    buttonSizer->Add(deleteButton, 1, wxALL | wxEXPAND, 5);
+    buttonSizer->Add(deactivateButton, 1, wxALL | wxEXPAND, 5);
+
+    mainSizer->Add(buttonSizer, 0, wxALL | wxEXPAND, 10);
 
     panel->SetSizer(mainSizer);
 
     // Event bindings
     Bind(wxEVT_BUTTON, &InstrumentListFrame::OnRefresh, this, ID_REFRESH_BUTTON);
-    Bind(wxEVT_BUTTON, &InstrumentListFrame::OnAddModify, this, ID_ADD_MODIFY_BUTTON);
+    Bind(wxEVT_BUTTON, &InstrumentListFrame::OnAdd, this, ID_ADD_BUTTON);
+    Bind(wxEVT_BUTTON, &InstrumentListFrame::OnModify, this, ID_MODIFY_BUTTON);
+    Bind(wxEVT_BUTTON, &InstrumentListFrame::OnDelete, this, ID_DELETE_BUTTON);
 
     // Populate the grid with data
     PopulateInstrumentTable();
 }
 
+// Populate the instrument table with data from the API
 void InstrumentListFrame::PopulateInstrumentTable() {
     std::vector<std::unordered_map<std::string, std::string>> instruments = apiManager.getInstruments();
 
@@ -99,33 +120,6 @@ void InstrumentListFrame::OnRefresh(wxCommandEvent& event) {
     PopulateInstrumentTable();
 }
 
-void InstrumentListFrame::OnAddModify(wxCommandEvent& event) {
-    std::string isin = isinEntry->GetValue().ToStdString();
-    std::string mic = micEntry->GetValue().ToStdString();
-    std::string currency = currencyEntry->GetValue().ToStdString();
-    std::string status = statusEntry->GetValue().ToStdString();
-
-    if (isin.empty() || mic.empty() || currency.empty() || status.empty()) {
-        wxMessageBox("All fields must be filled!", "Error", wxICON_ERROR);
-        return;
-    }
-
-    // Prepare JSON payload
-    std::string data = "{\"isin\":\"" + isin + "\",\"mic\":\"" + mic +
-                       "\",\"currency\":\"" + currency + "\",\"status\":\"" + status + "\"}";
-
-    // Send POST request to API to add/modify the instrument
-    std::string response = apiManager.post("/instruments", data);
-
-    // Check response and notify user
-    if (response.find("successfully") != std::string::npos) {
-        wxMessageBox("Instrument added/modified successfully!", "Success", wxICON_INFORMATION);
-        PopulateInstrumentTable(); // Refresh grid
-    } else {
-        wxMessageBox("Failed to add/modify instrument.", "Error", wxICON_ERROR);
-    }
-}
-
 void InstrumentListFrame::OnGridCellSelected(wxGridEvent& event) {
     int row = event.GetRow(); // Get the row index of the selected cell
 
@@ -145,3 +139,62 @@ void InstrumentListFrame::OnGridCellSelected(wxGridEvent& event) {
     event.Skip();
 }
 
+void InstrumentListFrame::OnAdd(wxCommandEvent& event) {
+    std::string isin = isinEntry->GetValue().ToStdString();
+    std::string mic = micEntry->GetValue().ToStdString();
+    std::string currency = currencyEntry->GetValue().ToStdString();
+    std::string status = statusEntry->GetValue().ToStdString();
+
+    if (isin.empty() || mic.empty() || currency.empty() || status.empty()) {
+        wxMessageBox("All fields are required.", "Error", wxOK | wxICON_ERROR);
+        return;
+    }
+
+    if (apiManager.addInstrument(isin, mic, currency, status)) {
+        wxMessageBox("Instrument added successfully!", "Success", wxOK | wxICON_INFORMATION);
+        PopulateInstrumentTable();
+    } else {
+        wxMessageBox("Failed to add instrument. Please try again.", "Error", wxOK | wxICON_ERROR);
+    }
+}
+
+void InstrumentListFrame::OnModify(wxCommandEvent& event) {
+    std::string isin = isinEntry->GetValue().ToStdString();
+    std::string mic = micEntry->GetValue().ToStdString();
+    std::string currency = currencyEntry->GetValue().ToStdString();
+    std::string status = statusEntry->GetValue().ToStdString();
+
+    if (isin.empty()) {
+        wxMessageBox("ISIN is required to modify an instrument.", "Error", wxOK | wxICON_ERROR);
+        return;
+    }
+
+    if (apiManager.modifyInstrument(isin, mic, currency, status)) {
+        wxMessageBox("Instrument modified successfully!", "Success", wxOK | wxICON_INFORMATION);
+        PopulateInstrumentTable();
+    } else {
+        wxMessageBox("Failed to modify instrument. Please try again.", "Error", wxOK | wxICON_ERROR);
+    }
+}
+
+void InstrumentListFrame::OnDelete(wxCommandEvent& event) {
+    std::string isin = isinEntry->GetValue().ToStdString();
+
+    if (isin.empty()) {
+        wxMessageBox("ISIN is required to delete an instrument.", "Error", wxOK | wxICON_ERROR);
+        return;
+    }
+
+    int confirm = wxMessageBox("Are you sure you want to delete this instrument?", 
+                                "Confirm Deletion", wxYES_NO | wxICON_WARNING);
+    if (confirm != wxYES) {
+        return;
+    }
+
+    if (apiManager.dellInstrument(isin)) {
+        wxMessageBox("Instrument deleted successfully!", "Success", wxOK | wxICON_INFORMATION);
+        PopulateInstrumentTable();
+    } else {
+        wxMessageBox("Failed to delete instrument. Please try again.", "Error", wxOK | wxICON_ERROR);
+    }
+}

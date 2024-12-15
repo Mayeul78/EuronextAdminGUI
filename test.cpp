@@ -85,5 +85,13 @@ int main() {
         }
     }
 
+    // Perform the deletion of an instrument
+    std::cout << "\nAttempting to delete instrument with ISIN: " << newISIN << std::endl;
+    if (apiManager.dellInstrument(newISIN)) {
+        std::cout << "Instrument with ISIN " << newISIN << " deleted successfully.\n";
+    } else {
+        std::cerr << "Failed to delete instrument with ISIN " << newISIN << ".\n";
+    }
+
     return 0;
 }

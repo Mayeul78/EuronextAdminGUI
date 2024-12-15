@@ -21,6 +21,7 @@ public:
     std::string get(const std::string& endpoint);
     std::string post(const std::string& endpoint, const std::string& data);
     std::string put(const std::string& endpoint, const std::string& data);
+    std::string del(const std::string& endpoint);
 
 
 
@@ -32,6 +33,7 @@ public:
     bool modifyInstrument(const std::string& isin, const std::string& mic,
                                   const std::string& currency, const std::string& status);
 
+    bool dellInstrument(const std::string& isin);
     std::vector<std::unordered_map<std::string, std::string>> getInstruments();
 
 };

@@ -179,6 +179,49 @@ bool APIManager::login(const std::string& username, const std::string& password)
     return false;
 }
 
+std::string APIManager::del(const std::string& endpoint) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        throw std::runtime_error("Failed to initialize CURL.");
+    }
+
+    // Construct the full URL
+    std::string url = baseUrl + endpoint;
+
+    // Response data
+    std::string response;
+
+    // Set up CURL for DELETE request
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    // Set Authorization header if token is present
+    struct curl_slist* headers = nullptr;
+    if (!token.empty()) {
+        std::string authHeader = "Authorization: " + token;
+        headers = curl_slist_append(headers, authHeader.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    }
+
+    // Perform the DELETE request
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        std::string error = "CURL DELETE request failed: " + std::string(curl_easy_strerror(res));
+        curl_easy_cleanup(curl);
+        if (headers) curl_slist_free_all(headers);
+        throw std::runtime_error(error);
+    }
+
+    // Clean up CURL resources
+    curl_easy_cleanup(curl);
+    if (headers) curl_slist_free_all(headers);
+
+    return response;
+}
+
+
 void APIManager::ping() {
     std::string response = get("/ping");
     std::cout << "Ping response: " << response << std::endl;
@@ -322,3 +365,27 @@ bool APIManager::modifyInstrument(const std::string& isin, const std::string& mi
         return false;
     }
 }
+
+bool APIManager::dellInstrument(const std::string& isin) {
+    if (isin.empty()) {
+        std::cerr << "ISIN is required to delete an instrument." << std::endl;
+        return false;
+    }
+
+    std::string endpoint = "/instruments/" + isin;
+
+    try {
+        std::string response = del(endpoint);
+        if (response.find("Instrument deleted successfully") != std::string::npos) {
+            std::cout << "Instrument with ISIN " << isin << " deleted successfully." << std::endl;
+            return true;
+        } else {
+            std::cerr << "Failed to delete instrument. Response: " << response << std::endl;
+            return false;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return false;
+    }
+}
+

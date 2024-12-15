@@ -29,8 +29,16 @@ private:
     // Methods
     void PopulateInstrumentTable();
     void OnRefresh(wxCommandEvent& event);
-    void OnAddModify(wxCommandEvent& event);
+
+    //Copy line in fields
     void OnGridCellSelected(wxGridEvent& event);
+
+    //Buttons funct
+    void OnAdd(wxCommandEvent& event);
+    void OnModify(wxCommandEvent& event);
+    void OnDelete(wxCommandEvent& event);
+    void OnDeactivate(wxCommandEvent& event);
+
 
 };
 
